@@ -9,25 +9,18 @@ package jp.morintu.game.HakoiriDoroidKun.obj;
 import java.util.ArrayList;
 import java.util.List;
 
+import jp.morintu.game.HakoiriDoroidKun.Function;
 import jp.morintu.game.HakoiriDoroidKun.parts.Vector2;
 import android.graphics.Canvas;
 
-public class CharacterList
+public class CharacterManager
 {
-    private List<CharacterObj> mObjList;
-    private Vector2 mDisplaySize;
-    private int mObjCount;
+    protected List<CharacterObj> mObjList;
+    protected int mObjCount;
 
-    public CharacterList() {
+    public CharacterManager() {
         mObjList = new ArrayList<CharacterObj>();
-        mDisplaySize = new Vector2();
         mObjCount = 0;
-    }
-
-    public void setDisplaySize(Vector2 displaySize) {
-        if (displaySize != null) {
-            mDisplaySize = displaySize;
-        }
     }
 
     public void addCharacter(CharacterObj obj) {
@@ -37,9 +30,22 @@ public class CharacterList
         }
     }
 
-    public void getCharacter(int num) {
-        mObjList.get(num);
-        mObjCount--;
+    public CharacterObj getCharacter(int num) {
+        CharacterObj obj = mObjList.get(num);
+        if (obj != null) {
+            mObjCount--;
+        }
+        return obj;
+    }
+
+    public boolean popCharacter(CharacterObj obj) {
+        int num = mObjList.indexOf(obj);
+        if (num != -1) {
+            mObjList.get(num);
+            mObjCount--;
+            return true;
+        }
+        return false;
     }
 
     public int getCharacterCount() {
@@ -59,8 +65,8 @@ public class CharacterList
     public void moveCharacter() {
         for (CharacterObj obj : mObjList) {
             if (obj.getDisplaySize().x == 0) {
-                if (mDisplaySize.x != 0) {
-                    obj.setDisplaySize(mDisplaySize);
+                if (Function.getDisplaySize().x != 0) {
+                    obj.setDisplaySize(Function.getDisplaySize());
                 }
             }
             obj.moveCharacter();
@@ -68,10 +74,11 @@ public class CharacterList
     }
 
     /**
+     * getTouchCharacter
      * 
-     * @return true:hit false:nohit
+     * @return hitObject
      */
-    public boolean isTouchCharacter(Vector2 touchVec) {
+    public CharacterObj getTouchCharacter(Vector2 touchVec) {
         if (touchVec != null) {
             for (int i = mObjList.size() - 1; i >= 0; i--) {
                 final CharacterObj obj = mObjList.get(i);
@@ -80,10 +87,10 @@ public class CharacterList
                 }
                 if (obj.checkTouch(touchVec)) {
                     obj.onTouchCharacter();
-                    return true;
+                    return obj;
                 }
             }
         }
-        return false;
+        return null;
     }
 }
