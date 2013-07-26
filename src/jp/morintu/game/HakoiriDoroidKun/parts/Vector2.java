@@ -16,9 +16,9 @@ public class Vector2
         y = 0;
     }
 
-    public Vector2(float ax, float ay) {
-        x = ax;
-        y = ay;
+    public Vector2(float sx, float sy) {
+        x = sx;
+        y = sy;
     }
 
     public void set(float sx, float sy) {

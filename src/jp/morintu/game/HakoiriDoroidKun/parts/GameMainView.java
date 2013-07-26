@@ -8,7 +8,8 @@ package jp.morintu.game.HakoiriDoroidKun.parts;
 
 import java.util.Random;
 
-import jp.morintu.game.HakoiriDoroidKun.obj.CharacterList;
+import jp.morintu.game.HakoiriDoroidKun.Function;
+import jp.morintu.game.HakoiriDoroidKun.obj.CharacterManager;
 import jp.morintu.game.HakoiriDoroidKun.obj.DownDroid;
 import jp.morintu.game.HakoiriDoroidKun.util.MyLog;
 import android.content.Context;
@@ -37,10 +38,11 @@ public class GameMainView extends SurfaceView implements
     private Random mRandom;
     private Vector2 mDisplaySize;
     private static final Vector2 mTouchVec = new Vector2();
-    private CharacterList mDroidList;
+    private GameStatusBase mGameStatusBase;
+    private CharacterManager mCharacterManager;
 
     private boolean mIsGameMove = false;
-    private GAME_STATE mGameState;
+    private GAME_STATE mState;
 
     /**
      * Construct
@@ -51,15 +53,21 @@ public class GameMainView extends SurfaceView implements
         super(context);
         mRandom = new Random();
         mDisplaySize = new Vector2();
-        mDroidList = new CharacterList();
-        mGameState = GAME_STATE.LOADING;
+        mCharacterManager = new CharacterManager();
+        mState = GAME_STATE.LOADING;
 
-        // Get SurfaceHolder
-        mSurfaceHolder = getHolder();
+        mGameStatusBase = new GameStatusBase();
+        mGameStatusBase.setCharcterManager(mCharacterManager);
 
-        // Set callback in SurfaceHolder
-        mSurfaceHolder.addCallback(this);
-        mSurfaceHolder.setFixedSize(getWidth(), getHeight());
+        // Surface process
+        {
+            // Get SurfaceHolder
+            mSurfaceHolder = getHolder();
+
+            // Set callback in SurfaceHolder
+            mSurfaceHolder.addCallback(this);
+            mSurfaceHolder.setFixedSize(getWidth(), getHeight());
+        }
 
         this.setOnTouchListener(this);
 
@@ -74,24 +82,17 @@ public class GameMainView extends SurfaceView implements
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         mDrawLooper = new Thread(new DrawThread());
-        mDrawLooper.start();
     }
 
     private class DrawThread implements Runnable
     {
-        // TODO: Use Timer
+        // TODO: Use Timer 30FPS?
         @Override
         public void run() {
             while ((mDrawLooper != null) && (mIsGameMove)) {
-                // Draw canvas
-                Canvas canvas = mSurfaceHolder.lockCanvas();
-                if (canvas != null) {
-                    // Draw
-                    doDraw(canvas);
-                    mSurfaceHolder.unlockCanvasAndPost(canvas);
-                }
+                doDraw();
 
-                move();
+                mGameStatusBase.onMoveGame();
             }
         }
     }
@@ -106,8 +107,11 @@ public class GameMainView extends SurfaceView implements
             int height) {
         mDisplaySize.x = width;
         mDisplaySize.y = height;
-        mDroidList.setDisplaySize(mDisplaySize);
+        Function.setDisplaySize(mDisplaySize);
         MyLog.d(DEBUG, TAG, "width=" + width + " height=" + height);
+
+        // Thread Start
+        mDrawLooper.start();
     }
 
     @Override
@@ -117,35 +121,6 @@ public class GameMainView extends SurfaceView implements
 
     public void close() {
         surfaceDestroyed(mSurfaceHolder);
-    }
-
-    /**
-     * Drawing
-     * 
-     * doDraw() between lockCanvas() and unlockCanvas(), It processes for a
-     * short time.
-     * 
-     * @param canvas
-     */
-    public void doDraw(Canvas canvas) {
-        // Initial
-        canvas.save();
-        canvas.drawColor(Color.BLACK);
-
-        // Draw
-        mDroidList.drawCharacter(canvas);
-
-        // Ending
-        canvas.restore();
-    }
-
-    public void makeCharacter(Bitmap bitmap) {
-        int newX = mRandom.nextInt(200);
-        newX += (bitmap.getWidth() / 2);
-        Vector2 vec = new Vector2(newX, 0 - (bitmap.getHeight() / 2));
-        DownDroid obj = new DownDroid(bitmap, vec);
-        obj.setSize(120, 120);
-        mDroidList.addCharacter(obj);
     }
 
     public void startGame() {
@@ -158,8 +133,27 @@ public class GameMainView extends SurfaceView implements
         mIsGameMove = false;
     }
 
-    public void gameChange(GAME_STATE state) {
-        mGameState = state;
+    /**
+     * Drawing
+     * 
+     * doDraw() between lockCanvas() and unlockCanvas(), It processes for a
+     * short time.
+     * 
+     * @param canvas
+     */
+    public void doDraw() {
+        Canvas canvas = mSurfaceHolder.lockCanvas();
+        if (canvas != null) {
+            canvas.save();
+            canvas.drawColor(Color.BLACK);
+            mGameStatusBase.onDrawGame(canvas);
+            canvas.restore();
+            mSurfaceHolder.unlockCanvasAndPost(canvas);
+        }
+    }
+
+    public void gameStateChange(GAME_STATE state) {
+        mState = state;
         switch (state)
         {
         case LOADING:
@@ -173,17 +167,13 @@ public class GameMainView extends SurfaceView implements
         }
     }
 
-    private void move() {
-        mDroidList.moveCharacter();
-    }
-
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         mTouchVec.set((int) event.getX(), (int) event.getY());
         switch (event.getAction())
         {
         case MotionEvent.ACTION_DOWN:
-            onTouchDown(mTouchVec);
+            mGameStatusBase.onPressTouch(mTouchVec);
             break;
         case MotionEvent.ACTION_UP:
             break;
@@ -195,10 +185,12 @@ public class GameMainView extends SurfaceView implements
         return false;
     }
 
-    public void onTouchDown(Vector2 touchVec) {
-        if (mDroidList.isTouchCharacter(touchVec)) {
-
-            return;
-        }
+    public void makeCharacter(Bitmap bitmap) {
+        int newX = mRandom.nextInt(200);
+        newX += (bitmap.getWidth() / 2);
+        Vector2 vec = new Vector2(newX, 0 - (bitmap.getHeight() / 2));
+        DownDroid obj = new DownDroid(bitmap, vec);
+        obj.setSize(120, 120);
+        mCharacterManager.addCharacter(obj);
     }
 }
